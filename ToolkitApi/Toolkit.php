@@ -64,6 +64,7 @@ class Toolkit
                                 'HelperLib'      => ZSTOOLKITLIB, // library containing Zend Server's RPG service program (ZSXMLSRV by default) that handles some of the toolkit's duties.
                                 'v5r4'           => false, // whether to ask XMLSERVICE to carefully use features that v5r4 can handle
                                 'sbmjobParams'   => '', // XMLSERVICE itself will provide good defaults in most cases (in production ZENDSVR(6)/ZSVR_JOBD/XTOOLKIT. In test mode, QSYS/QSRVJOB/XTOOLKIT). See PLUGCONF1 and 2
+                                'db2connect'     => false, // DB2 Connect enabled. Prefer native driver to when OS is not PASE.
                                 'debug'          => false,
                                 'debugLogFile'   => '/usr/local/zendsvr6/var/log/debug.log',
                              // CCSID/Hex at a global/request level. These properties are also defined at a parameter object level.
@@ -169,7 +170,12 @@ class Toolkit
             $this->_i5NamingFlag = $userOrI5NamingFlag;
             $schemaSep = ($this->_i5NamingFlag) ? '/' : '.';
             $this->setOptions(array('schemaSep' => $schemaSep));
-            $this->chooseTransport('ibm_db2');
+            if (strtoupper(substr(PHP_OS, 0, 3)) != 'AIX' && $this->getToolkitServiceParam('db2connect') === false) {
+                $this->chooseTransport('odbc');
+            }
+            else {
+                $this->chooseTransport('ibm_db2');
+            }
             if ($this->isDebug()) {
                 $this->debugLog("Re-using existing db connection with schema separator: $schemaSep");
             }
