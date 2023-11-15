@@ -20,7 +20,7 @@ $conn->setOptions(array('stateless' => true));  // specify true unless you have 
 // The job will remain running until ended *IMMED or timed out using a timeout option (see below)
 // Note: omitting InternalKey in stateful mode would cause a default key of '/tmp/Toolkit' to be used, which would mean everyone is sharing a single XMLSERVICE job.
 $conn->setOptions(array('stateless' => false, 
-                        'InternalKey' => "/tmp/alan2",
+                        'InternalKey' => "/tmp/alan2"
 ));
 
 // # 'idleTimeout' => $idleTimeoutSeconds 
@@ -34,7 +34,69 @@ $conn->setOptions(array('stateless' => false,
                         'idleTimeout' => 3600
 ));
   
+// # 'customControl' => $customControlKeys
+
+// 'customControl' is useful when you need to send control keys supported by XMLSERVICE but that aren't directly exposed by the PHP Toolkit. 
+// Helpful for the less popular control keys that you might still need from time to time.
+// To send multiple keys, include a space between each.
+
+// Example #1: *java when calling an RPG program that includes java. 
+
+$conn->setOptions(array('stateless' => true, 
+                        'customControl'=>'*java'
+));
+
+// Example #2: *call. Useful for setting a timeout on a hanging or looping RPG program. This example for stateless mode.
+$conn->setOptions(array('stateless'    => true, 
+                        'customControl'=> '*call(15/kill/server)', // return control to PHP after waiting 15 seconds. CPF is available in error code as well. 
+));
+
+// Example #3: *call and *sbmjob. Useful for setting a timeout on a hanging or looping RPG program. This example for stateful (IPC) mode.
+$conn->setOptions(array('stateless'    => false, // explicitly be stateful when using this timeout option
+                        'internalKey'  => '/tmp/tkitjob2', // arbitrary directory name under /tmp to represent unique job  
+                        'customControl'=> '*call(15/kill/server) *sbmjob', // return control to PHP after waiting 15 seconds. CPF is available in error code as well. 
+));
+
+
+// # 'debug' => true or false
+// # 'debugLogFile' => path of log file
+// For both, defaults are set in toolkit.ini under the [system] group.
+
+// The debug log, when enabled, logs all XML sent/received, as well as connection information, and timing of each request.
+// It is invaluable for troubleshooting performance and program calls.
+// Make sure the PHP user (probably QTMHHTTP if running from the web) has *RW access to the file,
+// and, if the file doesn't yet exist, *RWX access to the parent directory so PHP can create the file. 
+// The file can get large, so we recommend setting debug => false when logging is not needed.
+
+$conn->setOptions(array('debug' => true, 
+                        'debugLogFile'=>'/my/path/tkit_debug.log'
+));
+
+
+// sbmjobCommand is an advanced keyword. Use it when you need to set your own job name or other parameters for a stateful toolkit job. 
+// # 'sbmjobCommand' => full sbmjob command for full control of stateful toolkit job parameters (advanced)
+
+// Set these three values according to your needs (sample values given here)
+$internalKey = '/tmp/mykey123'; // unique identifier for job
+$jobName = 'MYTOOLKIT3'; 
+$jobQueue = 'QSYS/QSYSNOMAX';
+
+// specify stateful mode and the internal key (IPC) we established earlier.
+$conn->setOptions(['stateless' => false,
+                   'internalKey' => $internalKey,
+]);
+
+// Set up values needed in the sbmjob command
+$ipc = trim($conn->getInternalKey());
+$serviceLibrary = trim($conn->getOption('XMLServiceLib'));
+$jobNameParam = "JOB($jobName)";
+$jobqParam = "JOBQ($jobQueue)";
+
+// Fully customize where and how XMLSERVICE runs by building the SBMJOB command and set it up in the toolkit
+$sbmjobCommand = "SBMJOB CMD(CALL PGM({$serviceLibrary}/XMLSERVICE) PARM('$ipc')) {$jobNameParam} {$jobqParam}"; 
+$conn->setOptions(['sbmjobCommand' => $sbmjobCommand,
+                   'sbmjobParams'  => '', // empty because set these values in sbmjobCommand 
+                   'customControl' => '*sbmjob', // required when setting sbmjobCommand
+]);
 
 ?>
-
-
