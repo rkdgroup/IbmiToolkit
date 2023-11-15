@@ -21,6 +21,7 @@ class ProgramParameter
     protected  $labelLen;  /* use this on a data structure to get the size/length */
     protected  $labelDoUntil = '';   /* use on a data structure array along with 'dim' to to set # of records to return based on labelEndDo (see below) */
     protected  $labelEndDo = '';  /* use this on an integer "count" field to control the number of records to return in n array data structure (see labelDoUntil above) */
+    protected  $returnParameter;
     
     // CCSID/hex support
     protected $_ccsidBefore;
@@ -42,8 +43,8 @@ class ProgramParameter
      * @param int $dimension
      * @param string $by
      * @param bool $isArray
-     * @param null $labelSetLen
-     * @param null $labelLen
+     * @param int|null $labelSetLen
+     * @param int|null $labelLen
      * @param string $ccsidBefore
      * @param string $ccsidAfter
      * @param bool $useHex
@@ -387,6 +388,44 @@ class ProgramParameter
     }
 
     /**
+     * updates $arrParams, so pass it by reference.
+     * $arrParms is an array of parameter arrays or objects.
+     * 
+     * @deprecated Can't find where this function is used.
+     * 
+     * @param $arrParams
+     * @param array $arrValues
+     */
+    static function UpdateParameterValues(&$arrParams, array $arrValues)
+    {
+        if (!is_array($arrValues) || !is_array($arrParams)) {
+            return false;
+        }
+
+        // loop through all values passed in
+        foreach($arrValues as $varName =>$newData) {
+            // for each value, loop through all params at this level to see if the names match.
+            // find a param matching value passed in.
+            foreach ($arrParams as $single) {   
+                // if a data structure, get inner array and call self recursively.
+                if (is_object($single) && $single->isDS()) {
+                    $arr = $single->getParamValue();
+                    self::UpdateParameterValues($arr, array ($varName =>$newData));
+                } else {
+                    // regular param, not a ds. could be an array of values, though.
+                    $paramName =$single->getParamName();
+
+                    if ($paramName === $varName) {
+                        //$single->setParamValue(self::handleParamValue($newData)); // if data is an array; not done right
+                        $single->setParamValue($newData);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * bin2str is used by the 5250 Bridge. It converts a hex string to character string
      * while cleaning up unexpected characters.
      * Original comment: "can not be public. Return XML does not return a type of values."
@@ -434,7 +473,7 @@ class DataStructure extends ProgramParameter
      * @param string $comment
      * @param string $by
      * @param bool $isArray
-     * @param null $labelLen
+     * @param int|null $labelLen
      * @param string $io
      */
     function __construct($paramsArray, $struct_name ="DataStruct", $dim=0, $comment = '', $by='', $isArray=false, $labelLen = null, $io = 'both')
@@ -519,11 +558,11 @@ class PackedDecParam extends ProgramParameter
      * @param string $scale
      * @param string $comment
      * @param string $varName
-     * @param string $value
+     * @param mixed $value
      * @param int $dimension
      * @param string $by
      * @param bool $isArray
-     * @param null $labelSetLen
+     * @param int|null $labelSetLen
      */
     function __construct($io, $length, $scale, $comment,  $varName = '', $value = '', $dimension=0, $by='', $isArray = false,  $labelSetLen = null)
     {
@@ -548,7 +587,7 @@ class Int32Param extends ProgramParameter
      * @param int $dimension
      * @param string $by
      * @param bool $isArray
-     * @param null $labelSetLen
+     * @param int|null $labelSetLen
      */
      function __construct($io, $comment, $varName = '', $value = '', $dimension=0, $by='', $isArray = false, $labelSetLen = null)
      {
